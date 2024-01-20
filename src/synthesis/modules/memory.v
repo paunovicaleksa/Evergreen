@@ -10,7 +10,9 @@ module memory #(
     output reg [DATA_WIDTH - 1:0] out
 );
 
-	(* ram_init_file = FILE_NAME *) reg [DATA_WIDTH - 1:0] mem [2**ADDR_WIDTH - 1:0];
+	// (* ram_init_file = FILE_NAME *) reg [DATA_WIDTH - 1:0] mem [2**ADDR_WIDTH - 1:0];
+    reg[DATA_WIDTH - 1:0] mem [2 ** ADDR_WIDTH - 1 :0];
+
 
     always @(posedge clk) begin
         if (we) begin

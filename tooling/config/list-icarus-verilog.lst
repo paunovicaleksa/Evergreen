@@ -1,4 +1,11 @@
-+libdir+src/simulation/
-+libdir+src/simulation/modules/
+#comment out for windows
 +libdir+src/synthesis/
 +libdir+src/synthesis/modules/
++libdir+src/simulation/
++libdir+src/simulation/modules/
+
+#uncomment for windows
+#+libdir+src\simulation\
+#+libdir+src\simulation\modules\
+#+libdir+src\synthesis\
+#+libdir+src\synthesis\modules\

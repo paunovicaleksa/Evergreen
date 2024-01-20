@@ -1,4 +1,4 @@
-SIMUL_TOP_LEVEL_MODULE = top 
+SIMUL_TOP_LEVEL_MODULE = synth_top 
 SIMUL_LIB = work
 # 1(yes) -> override timescale
 # 0(no)  -> do NOT override timescale
@@ -15,7 +15,7 @@ SIMUL_IS_QUESTA_USED = 0
 # either empty variable or path ending with \\ i.e. double backslash
 SIMUL_TOOL_EXE_DIR_PATH = ~/altera/13.1/modelsim_ase/bin/
 
-SYNTH_TOP_LEVEL_MODULE = DE0_TOP
+SYNTH_TOP_LEVEL_MODULE = cpu
 # CycloneIII
 # CycloneV
 SYNTH_DEVICE_FAMILY = CycloneIII
