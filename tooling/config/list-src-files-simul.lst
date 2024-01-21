@@ -1,5 +1,11 @@
-src/synthesis/modules/cpu.v
-src/synthesis/modules/register.v
+src/synthesis/modules/ssd.v
+src/synthesis/modules/bcd.v
+
+src/synthesis/modules/clk_div.v
+
 src/synthesis/modules/alu.v
+src/synthesis/modules/register.v
+src/synthesis/modules/cpu.v
 src/synthesis/modules/memory.v
+src/synthesis/modules/top.v
 src/simulation/synth_top.v

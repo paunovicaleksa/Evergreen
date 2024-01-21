@@ -218,7 +218,8 @@ module DE0_TOP
 	) top_inst (
 		.clk(CLOCK_50),
 		.btn(~BUTTON[2:0]),
-		.sw(SW[9:0]),
+        .rst_n(SW[9]),
+		.sw(SW[8:0]),
 		.led(LEDG[9:0]),
 		.hex({HEX3_D, HEX2_D, HEX1_D, HEX0_D})
 	);

@@ -90,7 +90,8 @@ module DE0_CV_TOP(input CLOCK2_50,
     ) top_inst (
       .clk(CLOCK_50),
       .btn(~KEY[2:0]),
-      .sw(SW[9:0]),
+      .rst_n(SW[9]),
+      .sw(SW[8:0]),
       .led(LEDR[9:0]),
       .hex({HEX5, HEX4, HEX1, HEX0})
     );
