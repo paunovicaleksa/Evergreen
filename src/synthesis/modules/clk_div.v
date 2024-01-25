@@ -25,7 +25,7 @@ module clk_div #(
     always @(*) begin
         out_next = (timer_reg < DIVISOR/2);
         timer_next = timer_reg;
-        if(timer_reg == DIVISOR - 1) begin
+        if(timer_reg >= DIVISOR - 1) begin
             timer_next = 0;
         end else begin
             timer_next = timer_reg + 1;

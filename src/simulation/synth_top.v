@@ -1,37 +1,88 @@
 module synth_top; 
 
     reg dut_clk, dut_rst_n;
-    reg [8:0] dut_sw;
-    wire [15:0] dut_led;
+    reg [8:0] dut_in;
+    wire [5:0] dut_pc, dut_sp, dut_mem_addr;
+    wire [15:0] dut_mem_data, dut_mem_out;
+    wire [9:0] dut_out;
+    wire dut_mem_we, dut_clk_out;
     wire [27:0] dut_hex;
 
-    top #(
-        .DIVISOR(5)
-    ) my_top (
-        .clk(dut_clk),
+    // top #(
+    //     .DIVISOR(5)
+    // ) my_top (
+    //     .clk(dut_clk),
+    //     .rst_n(dut_rst_n),
+    //     .sw(dut_in),
+    //     .led(dut_out),
+    //     .hex(dut_hex)
+    // );
+
+    clk_div #(
+        .DIVISOR(6)
+    ) my_div (
         .rst_n(dut_rst_n),
-        .sw(dut_sw),
-        .led(dut_led),
-        .hex(dut_hex)
+        .clk(dut_clk),
+        .out(dut_clk_out)
     );
 
+    // cpu my_cpu(
+    //     .clk(dut_clk_out),
+    //     .rst_n(dut_rst_n),
+    //     .mem_in(dut_mem_out),
+    //     .in(dut_in),
+    //     .mem_we(dut_mem_we),
+    //     .mem_addr(dut_mem_addr),
+    //     .mem_data(dut_mem_data),
+    //     .out(dut_out),
+    //     .pc(dut_pc),
+    //     .sp(dut_sp),
+    //     .state(dut_state)
+    // );
+
+    // memory my_mem (
+    //     .clk(dut_clk_out),
+    //     .we(dut_mem_we),
+    //     .addr(dut_mem_addr),
+    //     .data(dut_mem_data),
+    //     .out(dut_mem_out)
+    // );
+
     initial begin
-        dut_sw[3:0] = 8; 
+        // $readmemh("./mem_init.hex", my_top.my_memory.mem);        
+        // dut_rst_n = 1'b0;
+        // dut_clk = 1'b0;
+        // dut_in = 9'h008;
+        // #2 dut_rst_n = 1'b1;
+        // #1250;
+        // dut_in = 9'h009;
+        // #1000;
+        // dut_in = 9'h003;
+        // #5000;
+        // $finish; 
         dut_rst_n = 1'b0;
         dut_clk = 1'b0;
         #2 dut_rst_n = 1'b1;
-        #285 dut_sw[3:0] = 16'h0009;
-        #100 dut_sw[3:0]= 16'h0003;
-        #600000;
-        $finish; 
+        repeat(1000) begin
+            #10;
+        end
     end
 
     always
         #5 dut_clk = ~dut_clk;
 
+    // initial begin
+    //     $monitor("Vreme = %d, sp = %d, pc = %d, mem_we = %b, mem_addr = %d, mem_data = %d, state = %d, mem_out = %x, out = %x",
+    //     $time, dut_sp, dut_pc, dut_mem_we, dut_mem_addr, dut_mem_data, dut_state, dut_mem_out, dut_out);
+    // end
     initial begin
-        $monitor("Time = %d, pc_ones = %x, pc_tens = %x, sp_ones = %x, sp_tens = %x, led = %x", 
-        $time, dut_hex[20:14], dut_hex[27:21], dut_hex[6:0], dut_hex[13:7], dut_led);
+        // $monitor("Vreme = %d led = %x",
+        // $time, dut_out); 
+    end
+
+    initial begin
+        $monitor("Vreme = %d clk = %b clk_div = %b",
+        $time, dut_clk, dut_clk_out); 
     end
 
 endmodule

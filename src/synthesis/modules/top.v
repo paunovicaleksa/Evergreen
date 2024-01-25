@@ -8,7 +8,7 @@ module top #(
     input rst_n,
     input [2:0] btn,
     input [8:0] sw,
-    output [15:0] led,
+    output [9:0] led,
     output [27:0] hex
 );
     wire clk_out;
@@ -24,14 +24,19 @@ module top #(
     wire [ADDR_WIDTH - 1:0] addr;
     wire [DATA_WIDTH - 1:0] mem_data, mem_in;
     wire [ADDR_WIDTH - 1:0] pc, sp;
+    wire [DATA_WIDTH - 1:0] cpu_in;
+    wire [DATA_WIDTH - 1:0] cpu_out;
+    assign cpu_in = {{(DATA_WIDTH - 4){1'b0}}, sw[3:0]};
+    assign led = cpu_out[9:0];
+
     cpu #(
         .ADDR_WIDTH(ADDR_WIDTH),
         .DATA_WIDTH(DATA_WIDTH)
     ) my_cpu (
         .rst_n(rst_n),
         .clk(clk_out),
-        .out(led),
-        .in(sw[8:0]),
+        .out(cpu_out),
+        .in(cpu_in),
         .mem_we(we),
         .mem_addr(addr),
         .mem_data(mem_data),
@@ -85,8 +90,4 @@ module top #(
         .out(hex[6:0])
     );
 
-    // simulation stuff
-    initial begin
-        $readmemh("./mem_init.hex", my_memory.mem);        
-    end
 endmodule
