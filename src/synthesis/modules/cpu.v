@@ -6,12 +6,13 @@ module cpu #(
     input rst_n,
     input [DATA_WIDTH - 1 : 0] mem_in,
     input [DATA_WIDTH - 1 : 0] in,
-    output mem_we,
-    output [ADDR_WIDTH - 1 : 0] mem_addr,
-    output [DATA_WIDTH - 1 : 0] mem_data,
+    output reg mem_we,
+    output reg [ADDR_WIDTH - 1 : 0] mem_addr,
+    output reg [DATA_WIDTH - 1 : 0] mem_data,
     output [DATA_WIDTH - 1 : 0] out,
     output [ADDR_WIDTH - 1 : 0] pc,
-    output [ADDR_WIDTH - 1 : 0] sp
+    output [ADDR_WIDTH - 1 : 0] sp,
+    output [31:0] state
 );
     // constants
     parameter PC_WIDTH = ADDR_WIDTH;
@@ -40,20 +41,10 @@ module cpu #(
     reg [DATA_WIDTH - 1:0] out_next, out_reg;
     assign out = out_reg;
 
-    // memory control signals
-    reg mem_we_reg, mem_we_next;
-    assign mem_we = mem_we_reg;
-
-    reg [ADDR_WIDTH - 1:0] mem_addr_reg, mem_addr_next;
-    reg [DATA_WIDTH - 1:0] mem_data_reg, mem_data_next;
-    assign mem_addr = mem_addr_reg;
-    assign mem_data = mem_data_reg;
-
     // register control signals
     reg [REG_NUM - 1:0] cl_reg, ld_reg, inc_reg, dec_reg, sr_reg, ir_reg, sl_reg, il_reg;
-    reg [REG_NUM - 1:0] cl_next, ld_next, inc_next, dec_next, sr_next, ir_next, sl_next, il_next;
 
-    reg [PC_WIDTH - 1:0] pc_in_reg, pc_in_next;
+    reg [PC_WIDTH - 1:0] pc_in;
     register #(
        .DATA_WIDTH(PC_WIDTH) 
     ) pc_reg (
@@ -61,7 +52,7 @@ module cpu #(
         .rst_n(rst_n),
         .cl(cl_reg[PC]),
         .ld(ld_reg[PC]),
-        .in(pc_in_reg),
+        .in(pc_in),
         .inc(inc_reg[PC]),
         .dec(dec_reg[PC]),
         .sr(sr_reg[PC]),
@@ -71,7 +62,7 @@ module cpu #(
         .out(pc)
     );
 
-    reg[SP_WIDTH - 1:0] sp_in_reg, sp_in_next;
+    reg[SP_WIDTH - 1:0] sp_in;
     register #(
        .DATA_WIDTH(SP_WIDTH) 
     ) sp_reg (
@@ -79,7 +70,7 @@ module cpu #(
         .rst_n(rst_n),
         .cl(cl_reg[SP]),
         .ld(ld_reg[SP]),
-        .in(sp_in_reg),
+        .in(sp_in),
         .inc(inc_reg[SP]),
         .dec(dec_reg[SP]),
         .sr(sr_reg[SP]),
@@ -127,7 +118,7 @@ module cpu #(
 
     // reg, next needed?
     wire [DATA_WIDTH - 1:0] a_out;
-    reg [2:0] alu_oc_reg, alu_oc_next;
+    reg [2:0] alu_oc_reg;
     wire [DATA_WIDTH - 1:0] alu_out;
     alu #(
         .DATA_WIDTH(DATA_WIDTH)
@@ -138,10 +129,11 @@ module cpu #(
         .f(alu_out)
     );
 
-    wire MOV32;
-    assign MOV32 = (ir_high_out[15:12] == MOV && ir_high_out[3:0] == 4'b1000)? 1 : 0;
     wire [DATA_WIDTH -1:0] a_in;
+    wire ARITHMETIC;
     assign a_in = (state_reg == EXEC_1)? alu_out : mem_in;
+    assign ARITHMETIC = ((ir_high_out[15:12] == ADD) || (ir_high_out[15:12] == SUB) ||
+    (ir_high_out[15:12] == MUL) || (ir_high_out[15:12] == DIV))? 1 : 0;
 
     register #(
        .DATA_WIDTH(DATA_WIDTH) 
@@ -163,45 +155,9 @@ module cpu #(
     // maybe only for state stuff, other things i can handle inside of the states
     always @(posedge clk, negedge rst_n) begin
         if(!rst_n) begin
-            // init all to zeroes, INIT will init pc, sp etc.?
-            cl_reg <= {REG_NUM{1'b0}};
-            // load only into SP and PC
-            ld_reg[ACC:IR_HIGH] <= {(REG_NUM - SP){1'b0}};
-            ld_reg[SP:PC] <= 2'b11;
-            inc_reg <= {REG_NUM{1'b0}};
-            dec_reg <= {REG_NUM{1'b0}};
-            sr_reg <= {REG_NUM{1'b0}};
-            ir_reg <= {REG_NUM{1'b0}};
-            sl_reg <= {REG_NUM{1'b0}};
-            il_reg <= {REG_NUM{1'b0}};
-            // values to load 
-            pc_in_reg <= START_PC;
-            sp_in_reg <= (2 ** ADDR_WIDTH) - 1;
-            alu_oc_reg <= 3'b000;
-            // memory signals
-            mem_we_reg <= 1'b0;
-            mem_addr_reg <= {ADDR_WIDTH{1'b0}};
-            mem_data_reg <= {DATA_WIDTH{1'b0}};
-            // output
             out_reg <= {DATA_WIDTH{1'b0}};
-            // init state
             state_reg <= INIT;
         end else begin
-            cl_reg <= cl_next;
-            ld_reg <= ld_next;
-            inc_reg <= inc_next;
-            dec_reg <= dec_next;
-            sr_reg <= sr_next;
-            ir_reg <= ir_next;
-            sl_reg <= sl_next;
-            il_reg <= il_next;
-            pc_in_reg <= pc_in_next;
-            sp_in_reg <= sp_in_next;
-            alu_oc_reg <= alu_oc_next;
-            // memory signals
-            mem_we_reg <= mem_we_next;
-            mem_addr_reg <= mem_addr_next;
-            mem_data_reg <= mem_data_next;
             // output
             out_reg <= out_next;
             // state
@@ -210,162 +166,136 @@ module cpu #(
     end
 
     always @(*) begin
-        cl_next = {REG_NUM{1'b0}};
-        ld_next = {REG_NUM{1'b0}};
-        inc_next = {REG_NUM{1'b0}};
-        dec_next = {REG_NUM{1'b0}};
-        sr_next = {REG_NUM{1'b0}};
-        ir_next = {REG_NUM{1'b0}};
-        sl_next = {REG_NUM{1'b0}};
-        il_next = {REG_NUM{1'b0}};
-        pc_in_next = {ADDR_WIDTH{1'b0}};
-        sp_in_next = {ADDR_WIDTH{1'b0}};
-        alu_oc_next = alu_oc_reg;
-        state_next = state_reg;
-        // also memory stuff
-        mem_we_next = 1'b0;
-        mem_addr_next = {ADDR_WIDTH{1'b0}};
-        mem_data_next = {DATA_WIDTH{1'b0}};
-        // output
+        ld_reg = {(REG_NUM){1'b0}};
+        cl_reg = {(REG_NUM){1'b0}};
+        inc_reg = {(REG_NUM){1'b0}};
+        dec_reg = {(REG_NUM){1'b0}};
+        sr_reg = {(REG_NUM){1'b0}};
+        ir_reg = {(REG_NUM){1'b0}};
+        sl_reg = {(REG_NUM){1'b0}};
+        il_reg = {(REG_NUM){1'b0}};
+        mem_addr = {(ADDR_WIDTH){1'b0}};
+        mem_data = {(DATA_WIDTH){1'b0}};
+        mem_we = 1'b0;
+        pc_in = {(PC_WIDTH){1'b0}};
+        sp_in = {(PC_WIDTH){1'b0}};
+
         out_next = out_reg;
+        state_next = state_reg;
 
         case (state_reg)
             INIT: begin
                 // init pc and sp
-
                 state_next = FETCH_0;
+                ld_reg[PC] = 1'b1;
+                ld_reg[SP] = 1'b1;
+                pc_in = START_PC;
+                sp_in = 63;
             end FETCH_0: begin
                 // pc points to the next instruction, load it!
-                ld_next[PC] = 1'b1;
-                pc_in_next = pc + 1;
-                mem_addr_next = pc;
+                ld_reg[PC] = 1'b1;
+                pc_in = pc + 1;
+                mem_addr = pc;
 
                 state_next = FETCH_1;
             end FETCH_1: begin
-                // mem data ready next clock cycle, load
-                ld_next[IR_HIGH] = 1'b1;
-                mem_addr_next = pc + 1;
-
-                state_next = FETCH_2;
-            end FETCH_2: begin
-                // ir_out ready next clock cycle, check mem_in instead
-                if(mem_in[15:12] == STOP_INST) begin
-                    state_next = STOP_STATE;
-                end else if(mem_in[15:12] == MOV && mem_in[3:0] == 4'b1000) begin
-                    // load next
-                    ld_next[IR_LOW] = 1'b1;
-                    // inc pc
-                    ld_next[PC] = 1'b1;
-                    pc_in_next = pc + 1;
-                    ld_next[ACC] = 1'b1;
-
-                    state_next = FETCH_3;
-                end else begin
-                    // load second operand into the acc
-                    if(mem_in[15:12] != IN && mem_in[15:12] != OUT) begin
-                        mem_addr_next = {3'b000, mem_in[6:4]};
-                    end else if(mem_in[15:12] == OUT) begin
-                        mem_addr_next = {3'b000, mem_in[10:8]};
-                    end
-                    state_next = FETCH_3;
-                end
-            end FETCH_3: begin
-                if(!MOV32 && ir_high_out[15:12] != IN && ir_high_out[15:12] != OUT) begin
-                    ld_next[ACC] = 1'b1;
-                    if(ir_high_out[7] == 1'b1) begin
-                        state_next = ADDR_0;
-                    end else begin
-                    // get second operand, maybe.
-                        if(ir_high_out[15:12] == MOV) begin
+                ld_reg[IR_HIGH] = 1'b1; 
+                case (mem_in[15:12])
+                    STOP_INST: begin
+                        state_next = STOP_STATE;
+                    end 
+                    IN: begin
+                        // indirect 
+                        if(mem_in[11] == 1'b1) begin
+                            mem_addr = mem_in[10:8];
                             state_next = EXEC_0;
                         end else begin
-                            mem_addr_next = {3'b000, ir_high_out[2:0]};
-                            if(ir_high_out[3] == 1'b1) begin
-                                state_next = ADDR_2;
+                            mem_addr = mem_in[10:8];
+                            mem_data = in;
+                            mem_we = 1'b1;
+                            state_next = FETCH_0;
+                        end
+                    end
+                    OUT: begin
+                        // load anyway?
+                        mem_addr = mem_in[10:8];
+                        if(mem_in[11] == 1'b1) begin
+                            state_next = FETCH_2;
+                        end else begin
+                            state_next = EXEC_0;
+                        end
+                    end
+                    MOV: begin
+                        if(mem_in[3:0] == 4'b1000) begin
+                            ld_reg[PC] = 1'b1;
+                            pc_in = pc + 1;
+                            mem_addr = pc;
+                            state_next = EXEC_0;
+                        end else begin
+                            mem_addr = mem_in[6:4];
+                            if(mem_in[7] == 1'b1) begin
+                                state_next = FETCH_2;
                             end else begin
-                                state_next = EXEC_0;
+                                state_next = FETCH_3;
                             end
                         end
                     end
-                end else if(ir_high_out[15:12] == OUT) begin
-                    ld_next[ACC] = 1'b1;
-                    if(ir_high_out[11] == 1'b1) begin
-                        state_next = ADDR_0;
-                    end else begin
-                        state_next = EXEC_0;
+                    default: begin
+                        state_next = FETCH_2;   
                     end
-                end else if(ir_high_out[15:12] == IN) begin
-                    state_next = EXEC_1;
-                end else begin
-                    state_next = EXEC_1;
-                end
-            // states for indirect addressing and other stuff i dont know.
-            end ADDR_0: begin
-                mem_addr_next = mem_in;
-
-                state_next = ADDR_1;
-            end ADDR_1: begin
-                mem_addr_next = {3'b000, ir_high_out[2:0]};
-                ld_next[ACC] = 1'b1;
-
-                if(ir_high_out[3] == 1'b1 && ir_high_out[15:12] != MOV) begin
-                    state_next = ADDR_2;
+                endcase
+            end FETCH_2: begin
+                mem_addr = mem_in;
+                if(ARITHMETIC == 1'b1) begin
+                    state_next = FETCH_3;
                 end else begin
                     state_next = EXEC_0;
                 end
-            // third operand, indirect
-            end ADDR_2: begin
-                state_next = ADDR_3;
-            end ADDR_3: begin
-                mem_addr_next = mem_in;   
+            end FETCH_3: begin
+                ld_reg[ACC] = 1'b1;
+                mem_addr = ir_high_out[2:0];
+                if(ir_high_out[3] == 1'b1) begin
+                    state_next = ADDR_0;
+                end else begin
+                    state_next = EXEC_0;
+                end
+            end ADDR_0: begin
+                mem_addr = mem_in;
                 state_next = EXEC_0;
             end EXEC_0: begin
-                if(ir_high_out[15:12] != MOV && ir_high_out[15:12] != OUT) begin
-                    alu_oc_next = ir_high_out[15:12] - 1;
-                    ld_next[ACC] = 1'b1;
-                end                 
-                state_next = EXEC_1;
-            end EXEC_1: begin
-                // data in acc for out 
-                if(ir_high_out[15:12] == OUT) begin
-                    out_next = a_out;
-                    state_next = FETCH_0;
-                end else if(ir_high_out[15:12] == IN) begin
-                    if(ir_high_out[11] == 1'b1) begin
-                        // indirect
-                        mem_addr_next = {3'b000, ir_high_out[10:8]};
-                        state_next = EXEC_2;
-                    end else begin
-                        mem_addr_next = {3'b000, ir_high_out[10:8]};
-                        mem_data_next = in;
-                        mem_we_next = 1'b1;
+                case (ir_high_out[15:12])
+                    IN: begin
+                        mem_addr = mem_in;
+                        mem_data = in;
+                        mem_we = 1'b1;
                         state_next = FETCH_0;
                     end
-                end else begin
-                    mem_addr_next = {3'b000, ir_high_out[10:8]};
-                    if(ir_high_out[11] == 1'b1) begin
-                        state_next = EXEC_2;
-                    end else begin
-                        if(ir_high_out[15:12] != MOV) begin
-                            mem_data_next = alu_out;
-                            mem_we_next = 1'b1;
-                            state_next = FETCH_0;
+                    OUT: begin
+                        out_next = mem_in;
+                        state_next = FETCH_0;
+                    end
+                    MOV: begin
+                        mem_addr = ir_high_out[10:8];
+                        if(ir_high_out[11] == 1'b1) begin
+                            ld_reg[ACC] = 1'b1;
+                            state_next = EXEC_1;
                         end else begin
-                            mem_data_next = a_out;
-                            mem_we_next = 1'b1;
+                            mem_data = mem_in;
+                            mem_we = 1'b1;
                             state_next = FETCH_0;
                         end
                     end
+                    default: begin
+                    end
+                endcase
+            end EXEC_1: begin
+                if(ir_high_out[15:12] == MOV) begin
+                    mem_addr = mem_in;
+                    mem_we = 1'b1;
+                    mem_data = a_out;
+                end else begin
                 end
-            end EXEC_2: begin
-                state_next = WB;
-            end WB: begin
-                mem_addr_next = mem_in;
-                mem_data_next = ir_high_out[15:12] == IN? in : a_out;
-                mem_we_next = 1'b1;
-
                 state_next = FETCH_0;
-            // handle separately, idc.
             end STOP_STATE: begin
             end STOP_STATE_OUT1: begin
             end default: begin
