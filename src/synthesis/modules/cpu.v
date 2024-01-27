@@ -131,7 +131,7 @@ module cpu #(
 
     wire [DATA_WIDTH -1:0] a_in;
     wire ARITHMETIC;
-    assign a_in = (state_reg == EXEC_1)? alu_out : mem_in;
+    assign a_in = (state_reg == EXEC_0 && ARITHMETIC == 1'b1)? alu_out : mem_in;
     assign ARITHMETIC = ((ir_high_out[15:12] == ADD) || (ir_high_out[15:12] == SUB) ||
     (ir_high_out[15:12] == MUL) || (ir_high_out[15:12] == DIV))? 1 : 0;
 
@@ -236,12 +236,17 @@ module cpu #(
                             if(mem_in[7] == 1'b1) begin
                                 state_next = FETCH_2;
                             end else begin
-                                state_next = FETCH_3;
+                                state_next = EXEC_0;
                             end
                         end
                     end
                     default: begin
-                        state_next = FETCH_2;   
+                        mem_addr = mem_in[6:4];
+                        if(mem_in[7] == 1'b1) begin
+                            state_next = FETCH_2;   
+                        end else begin
+                            state_next = FETCH_3;   
+                        end
                     end
                 endcase
             end FETCH_2: begin
@@ -258,9 +263,11 @@ module cpu #(
                     state_next = ADDR_0;
                 end else begin
                     state_next = EXEC_0;
+                    alu_oc_reg = (ir_high_out[15:12] - 1);
                 end
             end ADDR_0: begin
                 mem_addr = mem_in;
+                alu_oc_reg = (ir_high_out[15:12] - 1);
                 state_next = EXEC_0;
             end EXEC_0: begin
                 case (ir_high_out[15:12])
@@ -286,15 +293,22 @@ module cpu #(
                         end
                     end
                     default: begin
+                        // mem_in + acc
+                        ld_reg[ACC] = 1'b1;
+                        mem_addr = ir_high_out[10:8];
+                        if(ir_high_out[11]) begin
+                            state_next = EXEC_1;
+                        end else begin
+                            mem_data = alu_out;
+                            mem_we = 1'b1;
+                            state_next = FETCH_0;
+                        end
                     end
                 endcase
             end EXEC_1: begin
-                if(ir_high_out[15:12] == MOV) begin
-                    mem_addr = mem_in;
-                    mem_we = 1'b1;
-                    mem_data = a_out;
-                end else begin
-                end
+                mem_addr = mem_in;
+                mem_we = 1'b1;
+                mem_data = a_out;
                 state_next = FETCH_0;
             end STOP_STATE: begin
             end STOP_STATE_OUT1: begin
