@@ -30,7 +30,8 @@ module cpu #(
     parameter ADDR_0 = 5, ADDR_1 = 6, ADDR_2 = 7, ADDR_3 = 8;
     parameter EXEC_0 = 9, EXEC_1 = 10, EXEC_2 = 11;
     parameter WB = 12;
-    parameter STOP_STATE = 13, STOP_STATE_OUT1 = 14, STOP_STATE_OUT2 = 15;
+    parameter STOP_STATE = 13, STOP_STATE_OUT1 = 14, STOP_STATE_OUT2 = 15, STOP_STATE_OUT1_IND = 16, STOP_STATE_OUT2_IND = 17;
+    parameter STOP_STATE_OUT3 = 18, STOP_STATE_OUT3_IND = 19, IDLE_STATE = 20;
     parameter START_PC = 8;
     integer state_next, state_reg;
     assign state = state_reg;
@@ -165,6 +166,7 @@ module cpu #(
         end
     end
 
+    // TODO: vezati na ALU direktno ir_high - 1
     always @(*) begin
         ld_reg = {(REG_NUM){1'b0}};
         cl_reg = {(REG_NUM){1'b0}};
@@ -182,6 +184,7 @@ module cpu #(
 
         out_next = out_reg;
         state_next = state_reg;
+        alu_oc_reg = 3'b0;
 
         case (state_reg)
             INIT: begin
@@ -263,13 +266,12 @@ module cpu #(
                     state_next = ADDR_0;
                 end else begin
                     state_next = EXEC_0;
-                    alu_oc_reg = (ir_high_out[15:12] - 1);
                 end
             end ADDR_0: begin
                 mem_addr = mem_in;
-                alu_oc_reg = (ir_high_out[15:12] - 1);
                 state_next = EXEC_0;
             end EXEC_0: begin
+                alu_oc_reg = (ir_high_out[15:12] - 1);
                 case (ir_high_out[15:12])
                     IN: begin
                         mem_addr = mem_in;
@@ -311,7 +313,75 @@ module cpu #(
                 mem_data = a_out;
                 state_next = FETCH_0;
             end STOP_STATE: begin
+                if(ir_high_out[11:8] != 4'b0000) begin
+                    mem_addr = ir_high_out[10:8];
+                    if(ir_high_out[11] == 1'b1) begin
+                        state_next = STOP_STATE_OUT1_IND;
+                    end else begin
+                        state_next = STOP_STATE_OUT1;
+                    end
+                end else if(ir_high_out[7:4] != 4'b000) begin
+                    mem_addr = ir_high_out[6:4];
+                    if(ir_high_out[7] == 1'b1) begin
+                        state_next = STOP_STATE_OUT2_IND;
+                    end else begin
+                        state_next = STOP_STATE_OUT2;
+                    end
+                end else if(ir_high_out[3:0] != 4'b0000) begin
+                    mem_addr = ir_high_out[2:0];
+                    if(ir_high_out[3] == 1'b1) begin
+                        state_next = STOP_STATE_OUT3_IND;
+                    end else begin
+                        state_next = STOP_STATE_OUT3;
+                    end
+                end else begin
+                    state_next = IDLE_STATE;
+                end
+            end STOP_STATE_OUT1_IND: begin
+                mem_addr = mem_in;
+                state_next = STOP_STATE_OUT1;
             end STOP_STATE_OUT1: begin
+                out_next = mem_in;
+                if(ir_high_out[7:4] != 4'b000) begin
+                    mem_addr = ir_high_out[6:4];
+                    if(ir_high_out[7] == 1'b1) begin
+                        state_next = STOP_STATE_OUT2_IND;
+                    end else begin
+                        state_next = STOP_STATE_OUT2;
+                    end
+                end else if(ir_high_out[3:0] != 4'b0000) begin
+                    mem_addr = ir_high_out[2:0];
+                    if(ir_high_out[3] == 1'b1) begin
+                        state_next = STOP_STATE_OUT3_IND;
+                    end else begin
+                        state_next = STOP_STATE_OUT3;
+                    end
+                end else begin
+                    state_next = IDLE_STATE;
+                end
+            end STOP_STATE_OUT2_IND: begin
+                mem_addr = mem_in;
+                state_next = STOP_STATE_OUT2;
+            end STOP_STATE_OUT2: begin
+                out_next = mem_in;
+                if(ir_high_out[3:0] != 4'b0000) begin
+                    mem_addr = ir_high_out[2:0];
+                    if(ir_high_out[3] == 1'b1) begin
+                        state_next = STOP_STATE_OUT3_IND;
+                    end else begin
+                        state_next = STOP_STATE_OUT3;
+                    end
+                end else begin
+                    state_next = IDLE_STATE;
+                end
+            end STOP_STATE_OUT3_IND: begin
+                mem_addr = mem_in;
+                state_next = STOP_STATE_OUT3;
+            end STOP_STATE_OUT3: begin
+                out_next = mem_in;
+                state_next = IDLE_STATE;
+            end IDLE_STATE: begin
+                
             end default: begin
             end
         endcase
