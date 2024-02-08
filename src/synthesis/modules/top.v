@@ -27,6 +27,7 @@ module top #(
     wire [DATA_WIDTH - 1:0] cpu_in;
     wire [DATA_WIDTH - 1:0] cpu_out;
     assign cpu_in = {{(DATA_WIDTH - 4){1'b0}}, sw[3:0]};
+    // assign cpu_in = {sw[3:0], {(DATA_WIDTH - 4){1'b0}}};
     assign led = cpu_out[9:0];
 
     cpu #(
