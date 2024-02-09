@@ -14,6 +14,7 @@ module synth_top;
     ) my_top (
         .clk(dut_clk),
         .rst_n(dut_rst_n),
+        .btn(3'b000),
         .sw(dut_in),
         .led(dut_out),
         .hex(dut_hex)
@@ -56,7 +57,7 @@ module synth_top;
         dut_in = 9'h008;
         #2 dut_rst_n = 1'b1;
         #700;
-        dut_in = 9'h009;
+        dut_in = 9'h019;
         #400;
         dut_in = 9'h003;
         #5000;

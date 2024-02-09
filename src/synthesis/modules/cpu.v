@@ -11,8 +11,7 @@ module cpu #(
     output reg [DATA_WIDTH - 1 : 0] mem_data,
     output [DATA_WIDTH - 1 : 0] out,
     output [ADDR_WIDTH - 1 : 0] pc,
-    output [ADDR_WIDTH - 1 : 0] sp,
-    output [31:0] state
+    output [ADDR_WIDTH - 1 : 0] sp
 );
     // constants
     parameter PC_WIDTH = ADDR_WIDTH;
@@ -34,7 +33,6 @@ module cpu #(
     parameter STOP_STATE_OUT3 = 18, STOP_STATE_OUT3_IND = 19, IDLE_STATE = 20;
     parameter START_PC = 8;
     integer state_next, state_reg;
-    assign state = state_reg;
 
     // opcodes
     parameter MOV = 4'b0000, ADD = 4'b0001, SUB = 4'b0010, MUL = 4'b0011, DIV = 4'b0100, IN = 4'b0111, OUT = 4'b1000, STOP_INST = 4'b1111;
